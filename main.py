@@ -934,85 +934,24 @@ if check_password():
             if inventory_df.empty:
                 st.warning("No inventory data available.")
             else:
-                # Add filters for inventory
-                st.write("**Filter Inventory:**")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    # Make filter
-                    available_makes = sorted(inventory_df['make'].dropna().unique())
-                    selected_make = st.selectbox("Make", ["All"] + available_makes, key="inv_make")
-                    
-                    # DOA filter
-                    min_doa = int(inventory_df['DOA'].min())
-                    max_doa = int(inventory_df['DOA'].max())
-                    doa_range = st.slider("Days on App", min_doa, max_doa, (min_doa, max_doa), key="inv_doa")
-                
-                with col2:
-                    # Model filter based on selected make
-                    if selected_make != "All":
-                        available_models = sorted(inventory_df[inventory_df['make'] == selected_make]['model'].dropna().unique())
-                    else:
-                        available_models = sorted(inventory_df['model'].dropna().unique())
-                    selected_model = st.selectbox("Model", ["All"] + available_models, key="inv_model")
-                    
-                    # Request count filter
-                    min_requests = int(inventory_df['Buy_now_requests_count'].min())
-                    max_requests = int(inventory_df['Buy_now_requests_count'].max())
-                    request_range = st.slider("Buy Now Requests", min_requests, max_requests, (min_requests, max_requests), key="inv_requests")
-                
-                with col3:
-                    # Sort by
-                    sort_options = ["DOA (High to Low)", "DOA (Low to High)", "Requests (High to Low)", "Requests (Low to High)", "Price (High to Low)", "Price (Low to High)"]
-                    sort_by = st.selectbox("Sort by", sort_options, key="inv_sort")
-                
-                # Filter inventory
-                filtered_inventory = inventory_df.copy()
-                
-                if selected_make != "All":
-                    filtered_inventory = filtered_inventory[filtered_inventory['make'] == selected_make]
-                if selected_model != "All":
-                    filtered_inventory = filtered_inventory[filtered_inventory['model'] == selected_model]
-                
-                filtered_inventory = filtered_inventory[
-                    (filtered_inventory['DOA'] >= doa_range[0]) & 
-                    (filtered_inventory['DOA'] <= doa_range[1]) &
-                    (filtered_inventory['Buy_now_requests_count'] >= request_range[0]) & 
-                    (filtered_inventory['Buy_now_requests_count'] <= request_range[1])
-                ]
-                
-                # Sort inventory
-                if sort_by == "DOA (High to Low)":
-                    filtered_inventory = filtered_inventory.sort_values('DOA', ascending=False)
-                elif sort_by == "DOA (Low to High)":
-                    filtered_inventory = filtered_inventory.sort_values('DOA', ascending=True)
-                elif sort_by == "Requests (High to Low)":
-                    filtered_inventory = filtered_inventory.sort_values('Buy_now_requests_count', ascending=False)
-                elif sort_by == "Requests (Low to High)":
-                    filtered_inventory = filtered_inventory.sort_values('Buy_now_requests_count', ascending=True)
-                elif sort_by == "Price (High to Low)":
-                    filtered_inventory = filtered_inventory.sort_values('App_price', ascending=False)
-                elif sort_by == "Price (Low to High)":
-                    filtered_inventory = filtered_inventory.sort_values('App_price', ascending=True)
-                
                 # Display summary
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Filtered Cars", len(filtered_inventory))
+                    st.metric("Total Cars", len(inventory_df))
                 with col2:
-                    avg_doa = filtered_inventory['DOA'].mean()
+                    avg_doa = inventory_df['DOA'].mean()
                     st.metric("Avg DOA", f"{avg_doa:.1f} days")
                 with col3:
-                    avg_requests = filtered_inventory['Buy_now_requests_count'].mean()
+                    avg_requests = inventory_df['Buy_now_requests_count'].mean()
                     st.metric("Avg Requests", f"{avg_requests:.1f}")
                 with col4:
-                    avg_price = filtered_inventory['App_price'].mean()
+                    avg_price = inventory_df['App_price'].mean()
                     st.metric("Avg Price", f"EGP {avg_price:,.0f}")
                 
                 # Car selection for matching
                 st.write("**Select a car to find interested dealers:**")
                 car_options = []
-                for _, car in filtered_inventory.head(50).iterrows():  # Limit to top 50 for performance
+                for _, car in inventory_df.head(100).iterrows():  # Show top 100 cars
                     car_desc = f"{car['sf_vehicle_name']} - {car['make']} {car['model']} {car['year']} ({car['DOA']} days, {car['Buy_now_requests_count']} requests)"
                     car_options.append((car_desc, car))
                 
@@ -1140,7 +1079,7 @@ if check_password():
                         else:
                             st.warning("No interested dealers found for this car.")
                 else:
-                    st.info("No cars match the current filters.")
+                    st.info("No cars available in inventory.")
 
     if __name__ == "__main__":
         main() 
