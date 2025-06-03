@@ -119,32 +119,89 @@ if check_password():
         return 'Other'
 
 
+    def get_mileage_segment(km):
+        """Get mileage segment for a car"""
+        if pd.isna(km):
+            return None
+        if km <= 30000:
+            return "0-30K"
+        elif km <= 60000:
+            return "30K-60K"
+        elif km <= 90000:
+            return "60K-90K"
+        elif km <= 120000:
+            return "90K-120K"
+        else:
+            return "120K+"
+
+
+    def get_price_segment(price):
+        """Get price segment for a car"""
+        if pd.isna(price):
+            return None
+        if price <= 600000:
+            return "0-600K"
+        elif price <= 800000:
+            return "600K-800K"
+        elif price <= 900000:
+            return "800K-900K"
+        elif price <= 1100000:
+            return "900K-1.1M"
+        elif price <= 1300000:
+            return "1.1M-1.3M"
+        elif price <= 1600000:
+            return "1.3M-1.6M"
+        elif price <= 2100000:
+            return "1.6M-2.1M"
+        else:
+            return "2.1M+"
+
+
+    def get_year_segment(year):
+        """Get year segment for a car"""
+        if pd.isna(year):
+            return None
+        if 2010 <= year <= 2016:
+            return "2010-2016"
+        elif 2017 <= year <= 2019:
+            return "2017-2019"
+        elif 2020 <= year <= 2021:
+            return "2020-2021"
+        elif 2022 <= year <= 2024:
+            return "2022-2024"
+        else:
+            return None  # Outside defined ranges
+
+
     def show_methodology():
         """Display methodology explanation in an expander"""
         with st.expander("🔍 **How the Matching Algorithm Works**", expanded=False):
             st.markdown("""
             ### 📊 **Scoring Methodology (120 Points Total)**
 
-            #### **🎯 Historical Purchase Patterns (48 points)**
-            - **Exact Model Match** (18 pts max): If dealer bought this exact model before
-            - **Same Make Match** (12 pts max): If dealer bought this brand (when no exact model)
-            - **Same Origin Group** (8 pts max): If dealer bought cars from same region (Japanese/German/etc.)
-            - **Similar Price Range** (5 pts max): If dealer bought cars in similar price bracket
-            - **Year Preference** (7 pts max): Based on dealer's preferred car age
-            - **Mileage Preference** (5 pts max): Based on dealer's preferred km range
+            #### **🎯 Historical Purchase Patterns (40 points)**
+            - **Exact Model Match** (15 pts max): If dealer bought this exact model before
+            - **Same Make Match** (10 pts max): If dealer bought this brand (when no exact model)
+            - **Same Origin Group** (6 pts max): If dealer bought cars from same region (Japanese/German/etc.)
+            - **Price Range Segment** (4 pts max): If dealer bought cars in same price segment (0-600K, 600K-800K, 800K-900K, 900K-1.1M, 1.1M-1.3M, 1.3M-1.6M, 1.6M-2.1M, 2.1M+)
+            - **Year Segment** (3 pts max): If dealer bought cars in same year segment (2010-2016, 2017-2019, 2020-2021, 2022-2024)
+            - **Mileage Segment** (2 pts max): If dealer bought cars in same mileage segment (0-30K, 30K-60K, 60K-90K, 90K-120K, 120K+)
 
-            #### **📱 Recent App Activity (25 points)**
-            - **Exact Model Views** (15 pts max): Recent views of this exact model
-            - **Same Make Views** (10 pts max): Recent views of this brand
-            - **Exact Model Filters** (10 pts max): Recent searches for this model
-            - **Same Make Filters** (6 pts max): Recent searches for this brand
+            #### **📱 App Activity (40 points)**
+            - **Exact Model Requests** (12 pts max): Recent buy now/showroom requests for this model
+            - **Same Make Requests** (8 pts max): Recent requests for this brand
+            - **Exact Model Views** (8 pts max): Recent views of this exact model
+            - **Same Make Views** (5 pts max): Recent views of this brand
+            - **Exact Model Filters** (4 pts max): Recent searches for this model
+            - **Same Make Filters** (3 pts max): Recent searches for this brand
 
-            #### **🏪 OLX Market Activity (55 points total)**
-            - **Exact Model Listings** (25 pts max): Dealer actively sells this model
-            - **Same Make Listings** (10 pts max): Dealer sells this brand
-            - **Same Group Listings** (5 pts max): Dealer sells cars from same origin region
-            - **Similar Year Listings** (10 pts max): Dealer lists cars within 3 years of target
-            - **Similar Mileage Listings** (10 pts max): Dealer lists cars within ±50k km range
+            #### **🏪 OLX Market Activity (40 points)**
+            - **Exact Model Listings** (15 pts max): Dealer actively sells this exact model
+            - **Same Make Listings** (10 pts max): Dealer sells this brand (when no exact model)
+            - **Same Origin Group** (6 pts max): Dealer sells cars from same region (Japanese/German/etc.)
+            - **Price Range Segment** (4 pts max): If dealer lists cars in same price segment (0-600K, 600K-800K, 800K-900K, 900K-1.1M, 1.1M-1.3M, 1.3M-1.6M, 1.6M-2.1M, 2.1M+)
+            - **Year Segment** (3 pts max): If dealer lists cars in same year segment (2010-2016, 2017-2019, 2020-2021, 2022-2024)
+            - **Mileage Segment** (2 pts max): If dealer lists cars in same mileage segment (0-30K, 30K-60K, 60K-90K, 90K-120K, 120K+)
 
             ---
 
@@ -152,17 +209,18 @@ if check_password():
             1. **Model-specific behavior** gets highest scores
             2. **Make-specific behavior** gets medium scores  
             3. **Origin group behavior** gets lower scores
-            4. **Price similarity** provides additional context
+            4. **Price similarity** provides additional context with tight ±2% tolerance
 
             #### **📅 **Data Timeframes:**
             - **Historical Purchases**: Last 12 months
             - **App Activity**: Last 60 days  
             - **OLX Listings**: Last 90 days
+            - **Dealer Requests**: Last 60 days (not purchased)
 
             #### **🎨 **Result Categories:**
-            - 🟢 **High Interest (50+)**: Strong likelihood of purchase
-            - 🟡 **Medium Interest (30-49)**: Moderate potential
-            - 🔴 **Low Interest (15-29)**: Some relevance but lower priority
+            - 🟢 **High Interest (60+)**: Strong likelihood of purchase
+            - 🟡 **Medium Interest (40-59)**: Moderate potential
+            - 🔴 **Low Interest (20-39)**: Some relevance but lower priority
             """)
 
 
@@ -181,7 +239,7 @@ if check_password():
             except FileNotFoundError:
                 st.error(
                     "No credentials found. Please configure either Streamlit secrets or provide a service_account.json file.")
-                return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+                return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
         client = bigquery.Client(credentials=credentials)
 
@@ -195,6 +253,7 @@ if check_password():
         WHERE is_acquired = false 
           AND opportunity_current_status <> 'Lost' 
           AND quality_decision = 'Accepted'
+          and customer_response_had_accepted_status = true
         ORDER BY opportunity_creation_datetime DESC 
         """
 
@@ -388,6 +447,29 @@ if check_password():
         ORDER BY time DESC
         """
 
+        # Dealer requests query (unpurchased requests)
+        dealer_requests_query = """
+        SELECT 
+            vehicle_request_created_at,
+            dealer_code,
+            dealer_name,
+            dealer_phone,
+            request_type,
+            car_make,
+            car_model,
+            car_year,
+            car_kilometrage,
+            buy_now_price,
+            request_status,
+            visited_at,
+            sf_vehicle_name
+        FROM `pricing-338819.ajans_dealers.dealer_requests`
+        WHERE wholesale_vehicle_sold_date IS NULL
+        AND DATE(vehicle_request_created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 60 DAY)
+        AND dealer_code IS NOT NULL
+        ORDER BY vehicle_request_created_at DESC
+        """
+
         # OLX listings for all dealers
         olx_query = """
         WITH cleaned_numbers AS (
@@ -501,6 +583,10 @@ if check_password():
         recent_filters_df = client.query(recent_filters_query).to_dataframe()
         print("✓ recent_filters_query completed successfully")
 
+        print("\nExecuting dealer_requests_query...")
+        dealer_requests_df = client.query(dealer_requests_query).to_dataframe()
+        print("✓ dealer_requests_query completed successfully")
+
         print("\nExecuting olx_query...")
         olx_df = client.query(olx_query).to_dataframe()
         print("✓ olx_query completed successfully")
@@ -535,6 +621,16 @@ if check_password():
         if not recent_filters_df.empty:
             recent_filters_df['time'] = pd.to_datetime(recent_filters_df['time'])
 
+        if not dealer_requests_df.empty:
+            dealer_requests_df['vehicle_request_created_at'] = pd.to_datetime(
+                dealer_requests_df['vehicle_request_created_at'])
+            dealer_requests_df['visited_at'] = pd.to_datetime(dealer_requests_df['visited_at'])
+            # Convert numeric columns in dealer requests data
+            requests_numeric_columns = ['car_year', 'car_kilometrage', 'buy_now_price']
+            for col in requests_numeric_columns:
+                if col in dealer_requests_df.columns:
+                    dealer_requests_df[col] = pd.to_numeric(dealer_requests_df[col], errors='coerce')
+
         if not olx_df.empty:
             olx_df['added_at'] = pd.to_datetime(olx_df['added_at'])
             # Convert numeric columns in OLX data
@@ -543,10 +639,11 @@ if check_password():
                 if col in olx_df.columns:
                     olx_df[col] = pd.to_numeric(olx_df[col], errors='coerce')
 
-        return pipeline_df, inventory_df, historical_df, recent_views_df, recent_filters_df, olx_df
+        return pipeline_df, inventory_df, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df
 
 
-    def calculate_dealer_match_score(car, dealer_code, historical_df, recent_views_df, recent_filters_df, olx_df):
+    def calculate_dealer_match_score(car, dealer_code, historical_df, recent_views_df, recent_filters_df,
+                                     dealer_requests_df, olx_df):
         """Calculate how well a car matches a dealer's preferences (for pipeline cars)"""
 
         total_score = 0
@@ -556,232 +653,338 @@ if check_password():
         dealer_historical = historical_df[historical_df['dealer_code'] == dealer_code]
         dealer_views = recent_views_df[recent_views_df['dealer_code'] == dealer_code]
         dealer_filters = recent_filters_df[recent_filters_df['dealer_code'] == dealer_code]
+        dealer_requests = dealer_requests_df[dealer_requests_df['dealer_code'] == dealer_code]
         dealer_olx = olx_df[olx_df['dealer_code'] == dealer_code]
 
-        # 1. Historical Purchase Patterns (48 points total - increased to accommodate new factors)
+        # 1. Historical Purchase Patterns (40 points total)
         historical_score = 0
         if not dealer_historical.empty:
-            # Exact Model Match (18 points max) - highest priority
+            # Check for exact model matches first
             model_purchases = dealer_historical[
                 (dealer_historical['make'] == car['car_make']) &
                 (dealer_historical['model'] == car['car_model'])
                 ]
 
+            # Check for make matches (including exact model matches)
+            make_purchases = dealer_historical[dealer_historical['make'] == car['car_make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['car_make'])
+            group_purchases = pd.DataFrame()
+            if car_group != 'Other':
+                group_purchases = dealer_historical[
+                    dealer_historical['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
             if not model_purchases.empty:
-                # Dealer has bought this exact model before - high score
+                # Exact Model Match (15 points max)
                 model_frequency = len(model_purchases) / len(dealer_historical)
-                make_model_score = min(18, model_frequency * 50)
-                historical_score += make_model_score
-            else:
-                # No exact model match - check for make-only match
-                make_purchases = dealer_historical[dealer_historical['make'] == car['car_make']]
-                if not make_purchases.empty:
-                    make_frequency = len(make_purchases) / len(dealer_historical)
-                    make_score = min(12, make_frequency * 30)  # Reduced score for make-only
-                    historical_score += make_score
-                else:
-                    # No exact make match - check for same origin group
-                    car_group = get_car_group(car['car_make'])
-                    if car_group != 'Other':
-                        group_purchases = dealer_historical[
-                            dealer_historical['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_purchases.empty:
-                            group_frequency = len(group_purchases) / len(dealer_historical)
-                            group_score = min(8, group_frequency * 20)  # Lower score for group-only
-                            historical_score += group_score
+                model_score = min(15, model_frequency * 40)
+                historical_score += model_score
 
-            # Similar Price Range (5 points) - competitive cars analysis
-            if dealer_historical['price'].notna().any() and pd.notna(car['sylndr_offer_price']):
-                # Find cars in similar price range (±20%)
-                price_min = car['sylndr_offer_price'] * 0.8
-                price_max = car['sylndr_offer_price'] * 1.2
-                price_similar_purchases = dealer_historical[
-                    (dealer_historical['price'] >= price_min) &
-                    (dealer_historical['price'] <= price_max)
-                    ]
-                if not price_similar_purchases.empty:
-                    price_frequency = len(price_similar_purchases) / len(dealer_historical)
-                    price_score = min(5, price_frequency * 15)
-                    historical_score += price_score
+                # Also gets make score (10 points max) since model implies make interest
+                make_frequency = len(make_purchases) / len(dealer_historical)
+                make_score = min(10, make_frequency * 25)
+                historical_score += make_score
 
-            # Enhanced Year preference (7 points) - more granular scoring
-            if dealer_historical['year'].notna().any():
-                dealer_years = dealer_historical['year']
-                avg_year = dealer_years.mean()
-                year_std = dealer_years.std() if len(dealer_years) > 1 else 2
+                # Also gets origin group score (6 points max) since model implies group interest
+                if not group_purchases.empty:
+                    group_frequency = len(group_purchases) / len(dealer_historical)
+                    group_score = min(6, group_frequency * 15)
+                    historical_score += group_score
 
-                year_diff = abs(car['car_year'] - avg_year)
-                # Score based on how close to dealer's preferred year range
-                if year_diff <= 1:
-                    historical_score += 7  # Perfect match
-                elif year_diff <= 2:
-                    historical_score += 5  # Very good match
-                elif year_diff <= 3:
-                    historical_score += 3  # Good match
-                elif year_diff <= 5:
-                    historical_score += 1  # Acceptable match
+            elif not make_purchases.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_frequency = len(make_purchases) / len(dealer_historical)
+                make_score = min(10, make_frequency * 25)
+                historical_score += make_score
 
-            # Enhanced Mileage preference (5 points) - more granular scoring
-            if dealer_historical['kilometers'].notna().any() and pd.notna(car['car_kilometrage']):
-                dealer_kms = dealer_historical['kilometers']
-                avg_km = dealer_kms.mean()
-                km_std = dealer_kms.std() if len(dealer_kms) > 1 else 50000
+                # Also gets origin group score since make implies group interest
+                if not group_purchases.empty:
+                    group_frequency = len(group_purchases) / len(dealer_historical)
+                    group_score = min(6, group_frequency * 15)
+                    historical_score += group_score
 
-                km_diff = abs(car['car_kilometrage'] - avg_km)
-                # Score based on standard deviations from mean
-                if km_diff <= km_std * 0.5:
-                    historical_score += 5  # Within half std dev
-                elif km_diff <= km_std:
-                    historical_score += 3  # Within one std dev
-                elif km_diff <= km_std * 1.5:
-                    historical_score += 1  # Within 1.5 std dev
+            elif not group_purchases.empty:
+                # Only origin group match - gets origin score only
+                group_frequency = len(group_purchases) / len(dealer_historical)
+                group_score = min(6, group_frequency * 15)
+                historical_score += group_score
+
+            # Similar Price Range (4 points) - segment-based scoring
+            car_price_segment = get_price_segment(car['sylndr_offer_price'])
+            if dealer_historical['price'].notna().any() and car_price_segment is not None:
+                # Check if dealer has bought cars in the same price segment
+                dealer_price_segments = dealer_historical['price'].apply(get_price_segment)
+                price_segment_purchases = dealer_price_segments[dealer_price_segments == car_price_segment]
+                if not price_segment_purchases.empty:
+                    price_segment_frequency = len(price_segment_purchases) / len(dealer_historical)
+                    price_segment_score = min(4, price_segment_frequency * 12)
+                    historical_score += price_segment_score
+
+            # Year Segment preference (3 points) - segment-based scoring
+            car_year_segment = get_year_segment(car['car_year'])
+            if dealer_historical['year'].notna().any() and car_year_segment is not None:
+                # Check if dealer has bought cars in the same year segment
+                dealer_year_segments = dealer_historical['year'].apply(get_year_segment)
+                year_segment_purchases = dealer_year_segments[dealer_year_segments == car_year_segment]
+                if not year_segment_purchases.empty:
+                    # Full score if dealer has bought cars in this year segment
+                    historical_score += 3
+
+            # Mileage Segment preference (2 points) - segment-based scoring
+            car_mileage_segment = get_mileage_segment(car['car_kilometrage'])
+            if dealer_historical['kilometers'].notna().any() and car_mileage_segment is not None:
+                # Check if dealer has bought cars in the same mileage segment
+                dealer_mileage_segments = dealer_historical['kilometers'].apply(get_mileage_segment)
+                mileage_segment_purchases = dealer_mileage_segments[dealer_mileage_segments == car_mileage_segment]
+                if not mileage_segment_purchases.empty:
+                    # Full score if dealer has bought cars in this mileage segment
+                    historical_score += 2
 
         score_breakdown['Historical Purchases'] = historical_score
         total_score += historical_score
 
-        # 2. Recent App Activity (25% of total score) - enhanced with grouping
+        # 2. Recent App Activity (40 points total) - enhanced with additive scoring
         activity_score = 0
 
-        # Recent views with enhanced matching
+        # Recent dealer requests with enhanced matching (20 points max) - Higher priority
+        if not dealer_requests.empty:
+            # Check for exact model matches first
+            exact_model_requests = dealer_requests[
+                (dealer_requests['car_make'] == car['car_make']) &
+                (dealer_requests['car_model'] == car['car_model'])
+                ]
+
+            # Check for make matches (including exact model matches)
+            make_requests = dealer_requests[dealer_requests['car_make'] == car['car_make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['car_make'])
+            group_requests = pd.DataFrame()
+            if car_group != 'Other':
+                group_requests = dealer_requests[
+                    dealer_requests['car_make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
+            if not exact_model_requests.empty:
+                # Exact Model Requests (12 points max)
+                model_request_score = min(12, len(exact_model_requests) * 4)
+                activity_score += model_request_score
+
+                # Also gets make score (8 points max) since model implies make interest
+                make_request_score = min(8, len(make_requests) * 1.5)
+                activity_score += make_request_score
+
+                # Also gets origin group score (4 points max) since model implies group interest
+                if not group_requests.empty:
+                    group_request_score = min(4, len(group_requests) * 0.8)
+                    activity_score += group_request_score
+
+            elif not make_requests.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_request_score = min(8, len(make_requests) * 1.5)
+                activity_score += make_request_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_requests.empty:
+                    group_request_score = min(4, len(group_requests) * 0.8)
+                    activity_score += group_request_score
+
+            elif not group_requests.empty:
+                # Only origin group match - gets origin score only
+                group_request_score = min(4, len(group_requests) * 0.8)
+                activity_score += group_request_score
+
+        # Recent views with enhanced matching (13 points max) - Lower priority
         if not dealer_views.empty:
-            # Exact model views (15 points max)
+            # Check for exact model matches first
             exact_model_views = dealer_views[
                 (dealer_views['make'] == car['car_make']) &
                 (dealer_views['model'] == car['car_model'])
                 ]
-            if not exact_model_views.empty:
-                view_score = min(15, len(exact_model_views) * 5)
-                activity_score += view_score
-            else:
-                # Same make views (10 points max)
-                make_views = dealer_views[dealer_views['make'] == car['car_make']]
-                if not make_views.empty:
-                    view_score = min(10, len(make_views) * 2)
-                    activity_score += view_score
-                else:
-                    # Same group views (5 points max)
-                    car_group = get_car_group(car['car_make'])
-                    if car_group != 'Other':
-                        group_views = dealer_views[
-                            dealer_views['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_views.empty:
-                            view_score = min(5, len(group_views) * 1)
-                            activity_score += view_score
 
-        # Recent filters with enhanced matching
+            # Check for make matches (including exact model matches)
+            make_views = dealer_views[dealer_views['make'] == car['car_make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['car_make'])
+            group_views = pd.DataFrame()
+            if car_group != 'Other':
+                group_views = dealer_views[
+                    dealer_views['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
+            if not exact_model_views.empty:
+                # Exact Model Views (8 points max)
+                model_view_score = min(8, len(exact_model_views) * 6)
+                activity_score += model_view_score
+
+                # Also gets make score (5 points max) since model implies make interest
+                make_view_score = min(5, len(make_views) * 2)
+                activity_score += make_view_score
+
+                # Also gets origin group score (2 points max) since model implies group interest
+                if not group_views.empty:
+                    group_view_score = min(2, len(group_views) * 1)
+                    activity_score += group_view_score
+
+            elif not make_views.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_view_score = min(5, len(make_views) * 2)
+                activity_score += make_view_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_views.empty:
+                    group_view_score = min(2, len(group_views) * 1)
+                    activity_score += group_view_score
+
+            elif not group_views.empty:
+                # Only origin group match - gets origin score only
+                group_view_score = min(2, len(group_views) * 1)
+                activity_score += group_view_score
+
+        # Recent filters with enhanced matching (7 points max)
         if not dealer_filters.empty:
-            # Exact model filters (10 points max)
+            # Check for exact model matches first
             exact_model_filters = dealer_filters[
                 (dealer_filters['make'] == car['car_make']) &
                 (dealer_filters['model'] == car['car_model'])
                 ]
+
+            # Check for make matches (including exact model matches)
+            make_filters = dealer_filters[dealer_filters['make'] == car['car_make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['car_make'])
+            group_filters = pd.DataFrame()
+            if car_group != 'Other':
+                group_filters = dealer_filters[
+                    dealer_filters['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
             if not exact_model_filters.empty:
-                filter_score = min(10, len(exact_model_filters) * 8)
-                activity_score += filter_score
-            else:
-                # Same make filters (6 points max)
-                make_filters = dealer_filters[dealer_filters['make'] == car['car_make']]
-                if not make_filters.empty:
-                    filter_score = min(6, len(make_filters) * 3)
-                    activity_score += filter_score
-                else:
-                    # Same group filters (3 points max)
-                    car_group = get_car_group(car['car_make'])
-                    if car_group != 'Other':
-                        group_filters = dealer_filters[
-                            dealer_filters['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_filters.empty:
-                            filter_score = min(3, len(group_filters) * 1.5)
-                            activity_score += filter_score
+                # Exact Model Filters (4 points max)
+                model_filter_score = min(4, len(exact_model_filters) * 2)
+                activity_score += model_filter_score
+
+                # Also gets make score (3 points max) since model implies make interest
+                make_filter_score = min(3, len(make_filters) * 1)
+                activity_score += make_filter_score
+
+                # Also gets origin group score (1 point max) since model implies group interest
+                if not group_filters.empty:
+                    group_filter_score = min(1, len(group_filters) * 0.5)
+                    activity_score += group_filter_score
+
+            elif not make_filters.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_filter_score = min(3, len(make_filters) * 1)
+                activity_score += make_filter_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_filters.empty:
+                    group_filter_score = min(1, len(group_filters) * 0.5)
+                    activity_score += group_filter_score
+
+            elif not group_filters.empty:
+                # Only origin group match - gets origin score only
+                group_filter_score = min(1, len(group_filters) * 0.5)
+                activity_score += group_filter_score
 
         score_breakdown['Recent Activity'] = activity_score
         total_score += activity_score
 
-        # 3. OLX Listings (35% of total score) - enhanced with grouping
+        # 3. OLX Listings (40 points total) - updated to match Historical Purchase Patterns structure
         olx_score = 0
         if not dealer_olx.empty:
-            # Exact model listings (25 points max)
-            same_model_olx = dealer_olx[
+            # Check for exact model matches first
+            exact_model_olx = dealer_olx[
                 (dealer_olx['make'] == car['car_make']) &
                 (dealer_olx['model'] == car['car_model'])
                 ]
-            if not same_model_olx.empty:
-                olx_score += min(25, len(same_model_olx) * 8)
-            else:
-                # Same make listings (10 points max)
-                same_make_olx = dealer_olx[dealer_olx['make'] == car['car_make']]
-                if not same_make_olx.empty:
-                    olx_score += min(10, len(same_make_olx) * 1.5)
-                else:
-                    # Same group listings (5 points max)
-                    car_group = get_car_group(car['car_make'])
-                    if car_group != 'Other':
-                        group_olx = dealer_olx[
-                            dealer_olx['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_olx.empty:
-                            olx_score += min(5, len(group_olx) * 0.8)
 
-            # Additional OLX scoring for year similarity (10 points max)
-            if dealer_olx['year'].notna().any() and pd.notna(car['car_year']):
-                # Filter out null years and ensure numeric
-                valid_year_olx = dealer_olx[dealer_olx['year'].notna() & (dealer_olx['year'] != '')]
-                if not valid_year_olx.empty:
-                    try:
-                        # Find listings within 3 years of target car
-                        year_similar_olx = valid_year_olx[
-                            abs(valid_year_olx['year'] - car['car_year']) <= 3
-                            ]
-                        if not year_similar_olx.empty:
-                            # Score based on how close the years are
-                            year_scores = []
-                            for _, listing in year_similar_olx.iterrows():
-                                if pd.notna(listing['year']):
-                                    year_diff = abs(listing['year'] - car['car_year'])
-                                    if year_diff == 0:
-                                        year_scores.append(3)  # Exact year
-                                    elif year_diff == 1:
-                                        year_scores.append(2)  # 1 year difference
-                                    elif year_diff <= 3:
-                                        year_scores.append(1)  # 2-3 years difference
+            # Check for make matches (including exact model matches)
+            make_olx = dealer_olx[dealer_olx['make'] == car['car_make']]
 
-                            year_olx_score = min(10, sum(year_scores))
-                            olx_score += year_olx_score
-                    except (TypeError, ValueError):
-                        # Skip year scoring if data type issues
-                        pass
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['car_make'])
+            group_olx = pd.DataFrame()
+            if car_group != 'Other':
+                group_olx = dealer_olx[
+                    dealer_olx['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
 
-            # Additional OLX scoring for mileage similarity (10 points max)
-            if dealer_olx['kilometers'].notna().any() and pd.notna(car['car_kilometrage']):
-                # Filter out null kilometers and ensure numeric
-                valid_km_olx = dealer_olx[dealer_olx['kilometers'].notna() & (dealer_olx['kilometers'] != '')]
-                if not valid_km_olx.empty:
-                    try:
-                        # Find listings within similar mileage range (±50,000 km)
-                        km_similar_olx = valid_km_olx[
-                            abs(valid_km_olx['kilometers'] - car['car_kilometrage']) <= 50000
-                            ]
-                        if not km_similar_olx.empty:
-                            # Score based on how close the mileage is
-                            km_scores = []
-                            for _, listing in km_similar_olx.iterrows():
-                                if pd.notna(listing['kilometers']):
-                                    km_diff = abs(listing['kilometers'] - car['car_kilometrage'])
-                                    if km_diff <= 10000:
-                                        km_scores.append(3)  # Very close mileage
-                                    elif km_diff <= 25000:
-                                        km_scores.append(2)  # Close mileage
-                                    elif km_diff <= 50000:
-                                        km_scores.append(1)  # Acceptable mileage difference
+            # Additive scoring - exact model gets all levels
+            if not exact_model_olx.empty:
+                # Exact Model Match (15 points max)
+                model_frequency = len(exact_model_olx) / len(dealer_olx)
+                model_score = min(15, model_frequency * 40)
+                olx_score += model_score
 
-                            km_olx_score = min(10, sum(km_scores))
-                            olx_score += km_olx_score
-                    except (TypeError, ValueError):
-                        # Skip mileage scoring if data type issues
-                        pass
+                # Also gets make score (10 points max) since model implies make interest
+                make_frequency = len(make_olx) / len(dealer_olx)
+                make_score = min(10, make_frequency * 25)
+                olx_score += make_score
+
+                # Also gets origin group score (6 points max) since model implies group interest
+                if not group_olx.empty:
+                    group_frequency = len(group_olx) / len(dealer_olx)
+                    group_score = min(6, group_frequency * 15)
+                    olx_score += group_score
+
+            elif not make_olx.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_frequency = len(make_olx) / len(dealer_olx)
+                make_score = min(10, make_frequency * 25)
+                olx_score += make_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_olx.empty:
+                    group_frequency = len(group_olx) / len(dealer_olx)
+                    group_score = min(6, group_frequency * 15)
+                    olx_score += group_score
+
+            elif not group_olx.empty:
+                # Only origin group match - gets origin score only
+                group_frequency = len(group_olx) / len(dealer_olx)
+                group_score = min(6, group_frequency * 15)
+                olx_score += group_score
+
+            # Similar Price Range (4 points max) - segment-based scoring
+            car_price_segment = get_price_segment(car['sylndr_offer_price'])
+            if dealer_olx['price'].notna().any() and car_price_segment is not None:
+                # Check if dealer has OLX listings in the same price segment
+                dealer_price_segments = dealer_olx['price'].apply(get_price_segment)
+                price_segment_listings = dealer_price_segments[dealer_price_segments == car_price_segment]
+                if not price_segment_listings.empty:
+                    price_segment_frequency = len(price_segment_listings) / len(dealer_olx)
+                    price_segment_score = min(4, price_segment_frequency * 12)
+                    olx_score += price_segment_score
+
+            # Year Segment preference (3 points max) - segment-based scoring
+            car_year_segment = get_year_segment(car['car_year'])
+            if dealer_olx['year'].notna().any() and car_year_segment is not None:
+                # Check if dealer has OLX listings in the same year segment
+                dealer_year_segments = dealer_olx['year'].apply(get_year_segment)
+                year_segment_listings = dealer_year_segments[dealer_year_segments == car_year_segment]
+                if not year_segment_listings.empty:
+                    # Full score if dealer has listings in this year segment
+                    olx_score += 3
+
+            # Mileage Segment preference (2 points max) - segment-based scoring
+            car_mileage_segment = get_mileage_segment(car['car_kilometrage'])
+            if dealer_olx['kilometers'].notna().any() and car_mileage_segment is not None:
+                # Check if dealer has OLX listings in the same mileage segment
+                dealer_mileage_segments = dealer_olx['kilometers'].apply(get_mileage_segment)
+                mileage_segment_listings = dealer_mileage_segments[dealer_mileage_segments == car_mileage_segment]
+                if not mileage_segment_listings.empty:
+                    # Full score if dealer has listings in this mileage segment
+                    olx_score += 2
 
         score_breakdown['OLX Listings'] = olx_score
         total_score += olx_score
@@ -789,7 +992,8 @@ if check_password():
         return total_score, score_breakdown
 
 
-    def get_top_dealers_for_car(car, historical_df, recent_views_df, recent_filters_df, olx_df, top_n=10):
+    def get_top_dealers_for_car(car, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df,
+                                top_n=10):
         """Get top matching dealers for a specific car (pipeline cars)"""
 
         # Get all unique dealers
@@ -800,6 +1004,8 @@ if check_password():
             all_dealers.update(recent_views_df['dealer_code'].unique())
         if not recent_filters_df.empty:
             all_dealers.update(recent_filters_df['dealer_code'].unique())
+        if not dealer_requests_df.empty:
+            all_dealers.update(dealer_requests_df['dealer_code'].unique())
         if not olx_df.empty:
             all_dealers.update(olx_df['dealer_code'].unique())
 
@@ -810,7 +1016,7 @@ if check_password():
                 continue
 
             score, breakdown = calculate_dealer_match_score(
-                car, dealer_code, historical_df, recent_views_df, recent_filters_df, olx_df
+                car, dealer_code, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df
             )
 
             # Get dealer name
@@ -833,7 +1039,8 @@ if check_password():
         return dealer_scores[:top_n]
 
 
-    def calculate_inventory_match_score(car, dealer_code, historical_df, recent_views_df, recent_filters_df, olx_df):
+    def calculate_inventory_match_score(car, dealer_code, historical_df, recent_views_df, recent_filters_df,
+                                        dealer_requests_df, olx_df):
         """Calculate how well an inventory car matches a dealer's preferences"""
 
         total_score = 0
@@ -843,232 +1050,338 @@ if check_password():
         dealer_historical = historical_df[historical_df['dealer_code'] == dealer_code]
         dealer_views = recent_views_df[recent_views_df['dealer_code'] == dealer_code]
         dealer_filters = recent_filters_df[recent_filters_df['dealer_code'] == dealer_code]
+        dealer_requests = dealer_requests_df[dealer_requests_df['dealer_code'] == dealer_code]
         dealer_olx = olx_df[olx_df['dealer_code'] == dealer_code]
 
-        # 1. Historical Purchase Patterns (48 points total - increased to accommodate new factors)
+        # 1. Historical Purchase Patterns (40 points total)
         historical_score = 0
         if not dealer_historical.empty:
-            # Exact Model Match (18 points max) - highest priority
+            # Check for exact model matches first
             model_purchases = dealer_historical[
                 (dealer_historical['make'] == car['make']) &
                 (dealer_historical['model'] == car['model'])
                 ]
 
+            # Check for make matches (including exact model matches)
+            make_purchases = dealer_historical[dealer_historical['make'] == car['make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['make'])
+            group_purchases = pd.DataFrame()
+            if car_group != 'Other':
+                group_purchases = dealer_historical[
+                    dealer_historical['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
             if not model_purchases.empty:
-                # Dealer has bought this exact model before - high score
+                # Exact Model Match (15 points max)
                 model_frequency = len(model_purchases) / len(dealer_historical)
-                make_model_score = min(18, model_frequency * 50)
-                historical_score += make_model_score
-            else:
-                # No exact model match - check for make-only match
-                make_purchases = dealer_historical[dealer_historical['make'] == car['make']]
-                if not make_purchases.empty:
-                    make_frequency = len(make_purchases) / len(dealer_historical)
-                    make_score = min(12, make_frequency * 30)  # Reduced score for make-only
-                    historical_score += make_score
-                else:
-                    # No exact make match - check for same origin group
-                    car_group = get_car_group(car['make'])
-                    if car_group != 'Other':
-                        group_purchases = dealer_historical[
-                            dealer_historical['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_purchases.empty:
-                            group_frequency = len(group_purchases) / len(dealer_historical)
-                            group_score = min(8, group_frequency * 20)  # Lower score for group-only
-                            historical_score += group_score
+                model_score = min(15, model_frequency * 40)
+                historical_score += model_score
 
-            # Similar Price Range (5 points) - competitive cars analysis
-            if dealer_historical['price'].notna().any() and pd.notna(car['App_price']):
-                # Find cars in similar price range (±20%)
-                price_min = car['App_price'] * 0.8
-                price_max = car['App_price'] * 1.2
-                price_similar_purchases = dealer_historical[
-                    (dealer_historical['price'] >= price_min) &
-                    (dealer_historical['price'] <= price_max)
-                    ]
-                if not price_similar_purchases.empty:
-                    price_frequency = len(price_similar_purchases) / len(dealer_historical)
-                    price_score = min(5, price_frequency * 15)
-                    historical_score += price_score
+                # Also gets make score (10 points max) since model implies make interest
+                make_frequency = len(make_purchases) / len(dealer_historical)
+                make_score = min(10, make_frequency * 25)
+                historical_score += make_score
 
-            # Enhanced Year preference (7 points) - more granular scoring
-            if dealer_historical['year'].notna().any():
-                dealer_years = dealer_historical['year']
-                avg_year = dealer_years.mean()
-                year_std = dealer_years.std() if len(dealer_years) > 1 else 2
+                # Also gets origin group score (6 points max) since model implies group interest
+                if not group_purchases.empty:
+                    group_frequency = len(group_purchases) / len(dealer_historical)
+                    group_score = min(6, group_frequency * 15)
+                    historical_score += group_score
 
-                year_diff = abs(car['year'] - avg_year)
-                # Score based on how close to dealer's preferred year range
-                if year_diff <= 1:
-                    historical_score += 7  # Perfect match
-                elif year_diff <= 2:
-                    historical_score += 5  # Very good match
-                elif year_diff <= 3:
-                    historical_score += 3  # Good match
-                elif year_diff <= 5:
-                    historical_score += 1  # Acceptable match
+            elif not make_purchases.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_frequency = len(make_purchases) / len(dealer_historical)
+                make_score = min(10, make_frequency * 25)
+                historical_score += make_score
 
-            # Enhanced Mileage preference (5 points) - more granular scoring
-            if dealer_historical['kilometers'].notna().any() and pd.notna(car['kilometers']):
-                dealer_kms = dealer_historical['kilometers']
-                avg_km = dealer_kms.mean()
-                km_std = dealer_kms.std() if len(dealer_kms) > 1 else 50000
+                # Also gets origin group score since make implies group interest
+                if not group_purchases.empty:
+                    group_frequency = len(group_purchases) / len(dealer_historical)
+                    group_score = min(6, group_frequency * 15)
+                    historical_score += group_score
 
-                km_diff = abs(car['kilometers'] - avg_km)
-                # Score based on standard deviations from mean
-                if km_diff <= km_std * 0.5:
-                    historical_score += 5  # Within half std dev
-                elif km_diff <= km_std:
-                    historical_score += 3  # Within one std dev
-                elif km_diff <= km_std * 1.5:
-                    historical_score += 1  # Within 1.5 std dev
+            elif not group_purchases.empty:
+                # Only origin group match - gets origin score only
+                group_frequency = len(group_purchases) / len(dealer_historical)
+                group_score = min(6, group_frequency * 15)
+                historical_score += group_score
+
+            # Similar Price Range (4 points) - segment-based scoring
+            car_price_segment = get_price_segment(car['App_price'])
+            if dealer_historical['price'].notna().any() and car_price_segment is not None:
+                # Check if dealer has bought cars in the same price segment
+                dealer_price_segments = dealer_historical['price'].apply(get_price_segment)
+                price_segment_purchases = dealer_price_segments[dealer_price_segments == car_price_segment]
+                if not price_segment_purchases.empty:
+                    price_segment_frequency = len(price_segment_purchases) / len(dealer_historical)
+                    price_segment_score = min(4, price_segment_frequency * 12)
+                    historical_score += price_segment_score
+
+            # Year Segment preference (3 points) - segment-based scoring
+            car_year_segment = get_year_segment(car['year'])
+            if dealer_historical['year'].notna().any() and car_year_segment is not None:
+                # Check if dealer has bought cars in the same year segment
+                dealer_year_segments = dealer_historical['year'].apply(get_year_segment)
+                year_segment_purchases = dealer_year_segments[dealer_year_segments == car_year_segment]
+                if not year_segment_purchases.empty:
+                    # Full score if dealer has bought cars in this year segment
+                    historical_score += 3
+
+            # Mileage Segment preference (2 points) - segment-based scoring
+            car_mileage_segment = get_mileage_segment(car['kilometers'])
+            if dealer_historical['kilometers'].notna().any() and car_mileage_segment is not None:
+                # Check if dealer has bought cars in the same mileage segment
+                dealer_mileage_segments = dealer_historical['kilometers'].apply(get_mileage_segment)
+                mileage_segment_purchases = dealer_mileage_segments[dealer_mileage_segments == car_mileage_segment]
+                if not mileage_segment_purchases.empty:
+                    # Full score if dealer has bought cars in this mileage segment
+                    historical_score += 2
 
         score_breakdown['Historical Purchases'] = historical_score
         total_score += historical_score
 
-        # 2. Recent App Activity (25% of total score) - enhanced with grouping
+        # 2. Recent App Activity (40 points total) - enhanced with additive scoring
         activity_score = 0
 
-        # Recent views with enhanced matching
+        # Recent dealer requests with enhanced matching (20 points max) - Higher priority
+        if not dealer_requests.empty:
+            # Check for exact model matches first
+            exact_model_requests = dealer_requests[
+                (dealer_requests['car_make'] == car['make']) &
+                (dealer_requests['car_model'] == car['model'])
+                ]
+
+            # Check for make matches (including exact model matches)
+            make_requests = dealer_requests[dealer_requests['car_make'] == car['make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['make'])
+            group_requests = pd.DataFrame()
+            if car_group != 'Other':
+                group_requests = dealer_requests[
+                    dealer_requests['car_make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
+            if not exact_model_requests.empty:
+                # Exact Model Requests (12 points max)
+                model_request_score = min(12, len(exact_model_requests) * 4)
+                activity_score += model_request_score
+
+                # Also gets make score (8 points max) since model implies make interest
+                make_request_score = min(8, len(make_requests) * 1.5)
+                activity_score += make_request_score
+
+                # Also gets origin group score (4 points max) since model implies group interest
+                if not group_requests.empty:
+                    group_request_score = min(4, len(group_requests) * 0.8)
+                    activity_score += group_request_score
+
+            elif not make_requests.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_request_score = min(8, len(make_requests) * 1.5)
+                activity_score += make_request_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_requests.empty:
+                    group_request_score = min(4, len(group_requests) * 0.8)
+                    activity_score += group_request_score
+
+            elif not group_requests.empty:
+                # Only origin group match - gets origin score only
+                group_request_score = min(4, len(group_requests) * 0.8)
+                activity_score += group_request_score
+
+        # Recent views with enhanced matching (13 points max) - Lower priority
         if not dealer_views.empty:
-            # Exact model views (15 points max)
+            # Check for exact model matches first
             exact_model_views = dealer_views[
                 (dealer_views['make'] == car['make']) &
                 (dealer_views['model'] == car['model'])
                 ]
-            if not exact_model_views.empty:
-                view_score = min(15, len(exact_model_views) * 5)
-                activity_score += view_score
-            else:
-                # Same make views (10 points max)
-                make_views = dealer_views[dealer_views['make'] == car['make']]
-                if not make_views.empty:
-                    view_score = min(10, len(make_views) * 2)
-                    activity_score += view_score
-                else:
-                    # Same group views (5 points max)
-                    car_group = get_car_group(car['make'])
-                    if car_group != 'Other':
-                        group_views = dealer_views[
-                            dealer_views['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_views.empty:
-                            view_score = min(5, len(group_views) * 1)
-                            activity_score += view_score
 
-        # Recent filters with enhanced matching
+            # Check for make matches (including exact model matches)
+            make_views = dealer_views[dealer_views['make'] == car['make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['make'])
+            group_views = pd.DataFrame()
+            if car_group != 'Other':
+                group_views = dealer_views[
+                    dealer_views['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
+            if not exact_model_views.empty:
+                # Exact Model Views (8 points max)
+                model_view_score = min(8, len(exact_model_views) * 6)
+                activity_score += model_view_score
+
+                # Also gets make score (5 points max) since model implies make interest
+                make_view_score = min(5, len(make_views) * 2)
+                activity_score += make_view_score
+
+                # Also gets origin group score (2 points max) since model implies group interest
+                if not group_views.empty:
+                    group_view_score = min(2, len(group_views) * 1)
+                    activity_score += group_view_score
+
+            elif not make_views.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_view_score = min(5, len(make_views) * 2)
+                activity_score += make_view_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_views.empty:
+                    group_view_score = min(2, len(group_views) * 1)
+                    activity_score += group_view_score
+
+            elif not group_views.empty:
+                # Only origin group match - gets origin score only
+                group_view_score = min(2, len(group_views) * 1)
+                activity_score += group_view_score
+
+        # Recent filters with enhanced matching (7 points max)
         if not dealer_filters.empty:
-            # Exact model filters (10 points max)
+            # Check for exact model matches first
             exact_model_filters = dealer_filters[
                 (dealer_filters['make'] == car['make']) &
                 (dealer_filters['model'] == car['model'])
                 ]
+
+            # Check for make matches (including exact model matches)
+            make_filters = dealer_filters[dealer_filters['make'] == car['make']]
+
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['make'])
+            group_filters = pd.DataFrame()
+            if car_group != 'Other':
+                group_filters = dealer_filters[
+                    dealer_filters['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
+
+            # Additive scoring - exact model gets all levels
             if not exact_model_filters.empty:
-                filter_score = min(10, len(exact_model_filters) * 8)
-                activity_score += filter_score
-            else:
-                # Same make filters (6 points max)
-                make_filters = dealer_filters[dealer_filters['make'] == car['make']]
-                if not make_filters.empty:
-                    filter_score = min(6, len(make_filters) * 3)
-                    activity_score += filter_score
-                else:
-                    # Same group filters (3 points max)
-                    car_group = get_car_group(car['make'])
-                    if car_group != 'Other':
-                        group_filters = dealer_filters[
-                            dealer_filters['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_filters.empty:
-                            filter_score = min(3, len(group_filters) * 1.5)
-                            activity_score += filter_score
+                # Exact Model Filters (4 points max)
+                model_filter_score = min(4, len(exact_model_filters) * 2)
+                activity_score += model_filter_score
+
+                # Also gets make score (3 points max) since model implies make interest
+                make_filter_score = min(3, len(make_filters) * 1)
+                activity_score += make_filter_score
+
+                # Also gets origin group score (1 point max) since model implies group interest
+                if not group_filters.empty:
+                    group_filter_score = min(1, len(group_filters) * 0.5)
+                    activity_score += group_filter_score
+
+            elif not make_filters.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_filter_score = min(3, len(make_filters) * 1)
+                activity_score += make_filter_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_filters.empty:
+                    group_filter_score = min(1, len(group_filters) * 0.5)
+                    activity_score += group_filter_score
+
+            elif not group_filters.empty:
+                # Only origin group match - gets origin score only
+                group_filter_score = min(1, len(group_filters) * 0.5)
+                activity_score += group_filter_score
 
         score_breakdown['Recent Activity'] = activity_score
         total_score += activity_score
 
-        # 3. OLX Listings (35% of total score) - enhanced with grouping
+        # 3. OLX Listings (40 points total) - updated to match Historical Purchase Patterns structure
         olx_score = 0
         if not dealer_olx.empty:
-            # Exact model listings (25 points max)
-            same_model_olx = dealer_olx[
+            # Check for exact model matches first
+            exact_model_olx = dealer_olx[
                 (dealer_olx['make'] == car['make']) &
                 (dealer_olx['model'] == car['model'])
                 ]
-            if not same_model_olx.empty:
-                olx_score += min(25, len(same_model_olx) * 8)
-            else:
-                # Same make listings (10 points max)
-                same_make_olx = dealer_olx[dealer_olx['make'] == car['make']]
-                if not same_make_olx.empty:
-                    olx_score += min(10, len(same_make_olx) * 1.5)
-                else:
-                    # Same group listings (5 points max)
-                    car_group = get_car_group(car['make'])
-                    if car_group != 'Other':
-                        group_olx = dealer_olx[
-                            dealer_olx['make'].apply(lambda x: get_car_group(x) == car_group)
-                        ]
-                        if not group_olx.empty:
-                            olx_score += min(5, len(group_olx) * 0.8)
 
-            # Additional OLX scoring for year similarity (10 points max)
-            if dealer_olx['year'].notna().any() and pd.notna(car['year']):
-                # Filter out null years and ensure numeric
-                valid_year_olx = dealer_olx[dealer_olx['year'].notna() & (dealer_olx['year'] != '')]
-                if not valid_year_olx.empty:
-                    try:
-                        # Find listings within 3 years of target car
-                        year_similar_olx = valid_year_olx[
-                            abs(valid_year_olx['year'] - car['year']) <= 3
-                            ]
-                        if not year_similar_olx.empty:
-                            # Score based on how close the years are
-                            year_scores = []
-                            for _, listing in year_similar_olx.iterrows():
-                                if pd.notna(listing['year']):
-                                    year_diff = abs(listing['year'] - car['year'])
-                                    if year_diff == 0:
-                                        year_scores.append(3)  # Exact year
-                                    elif year_diff == 1:
-                                        year_scores.append(2)  # 1 year difference
-                                    elif year_diff <= 3:
-                                        year_scores.append(1)  # 2-3 years difference
+            # Check for make matches (including exact model matches)
+            make_olx = dealer_olx[dealer_olx['make'] == car['make']]
 
-                            year_olx_score = min(10, sum(year_scores))
-                            olx_score += year_olx_score
-                    except (TypeError, ValueError):
-                        # Skip year scoring if data type issues
-                        pass
+            # Check for origin group matches (including make and model matches)
+            car_group = get_car_group(car['make'])
+            group_olx = pd.DataFrame()
+            if car_group != 'Other':
+                group_olx = dealer_olx[
+                    dealer_olx['make'].apply(lambda x: get_car_group(x) == car_group)
+                ]
 
-            # Additional OLX scoring for mileage similarity (10 points max)
-            if dealer_olx['kilometers'].notna().any() and pd.notna(car['kilometers']):
-                # Filter out null kilometers and ensure numeric
-                valid_km_olx = dealer_olx[dealer_olx['kilometers'].notna() & (dealer_olx['kilometers'] != '')]
-                if not valid_km_olx.empty:
-                    try:
-                        # Find listings within similar mileage range (±50,000 km)
-                        km_similar_olx = valid_km_olx[
-                            abs(valid_km_olx['kilometers'] - car['kilometers']) <= 50000
-                            ]
-                        if not km_similar_olx.empty:
-                            # Score based on how close the mileage is
-                            km_scores = []
-                            for _, listing in km_similar_olx.iterrows():
-                                if pd.notna(listing['kilometers']):
-                                    km_diff = abs(listing['kilometers'] - car['kilometers'])
-                                    if km_diff <= 10000:
-                                        km_scores.append(3)  # Very close mileage
-                                    elif km_diff <= 25000:
-                                        km_scores.append(2)  # Close mileage
-                                    elif km_diff <= 50000:
-                                        km_scores.append(1)  # Acceptable mileage difference
+            # Additive scoring - exact model gets all levels
+            if not exact_model_olx.empty:
+                # Exact Model Match (15 points max)
+                model_frequency = len(exact_model_olx) / len(dealer_olx)
+                model_score = min(15, model_frequency * 40)
+                olx_score += model_score
 
-                            km_olx_score = min(10, sum(km_scores))
-                            olx_score += km_olx_score
-                    except (TypeError, ValueError):
-                        # Skip mileage scoring if data type issues
-                        pass
+                # Also gets make score (10 points max) since model implies make interest
+                make_frequency = len(make_olx) / len(dealer_olx)
+                make_score = min(10, make_frequency * 25)
+                olx_score += make_score
+
+                # Also gets origin group score (6 points max) since model implies group interest
+                if not group_olx.empty:
+                    group_frequency = len(group_olx) / len(dealer_olx)
+                    group_score = min(6, group_frequency * 15)
+                    olx_score += group_score
+
+            elif not make_olx.empty:
+                # Make match but no exact model - gets make + origin scores
+                make_frequency = len(make_olx) / len(dealer_olx)
+                make_score = min(10, make_frequency * 25)
+                olx_score += make_score
+
+                # Also gets origin group score since make implies group interest
+                if not group_olx.empty:
+                    group_frequency = len(group_olx) / len(dealer_olx)
+                    group_score = min(6, group_frequency * 15)
+                    olx_score += group_score
+
+            elif not group_olx.empty:
+                # Only origin group match - gets origin score only
+                group_frequency = len(group_olx) / len(dealer_olx)
+                group_score = min(6, group_frequency * 15)
+                olx_score += group_score
+
+            # Similar Price Range (4 points max) - segment-based scoring
+            car_price_segment = get_price_segment(car['App_price'])
+            if dealer_olx['price'].notna().any() and car_price_segment is not None:
+                # Check if dealer has OLX listings in the same price segment
+                dealer_price_segments = dealer_olx['price'].apply(get_price_segment)
+                price_segment_listings = dealer_price_segments[dealer_price_segments == car_price_segment]
+                if not price_segment_listings.empty:
+                    price_segment_frequency = len(price_segment_listings) / len(dealer_olx)
+                    price_segment_score = min(4, price_segment_frequency * 12)
+                    olx_score += price_segment_score
+
+            # Year Segment preference (3 points max) - segment-based scoring
+            car_year_segment = get_year_segment(car['year'])
+            if dealer_olx['year'].notna().any() and car_year_segment is not None:
+                # Check if dealer has OLX listings in the same year segment
+                dealer_year_segments = dealer_olx['year'].apply(get_year_segment)
+                year_segment_listings = dealer_year_segments[dealer_year_segments == car_year_segment]
+                if not year_segment_listings.empty:
+                    # Full score if dealer has listings in this year segment
+                    olx_score += 3
+
+            # Mileage Segment preference (2 points max) - segment-based scoring
+            car_mileage_segment = get_mileage_segment(car['kilometers'])
+            if dealer_olx['kilometers'].notna().any() and car_mileage_segment is not None:
+                # Check if dealer has OLX listings in the same mileage segment
+                dealer_mileage_segments = dealer_olx['kilometers'].apply(get_mileage_segment)
+                mileage_segment_listings = dealer_mileage_segments[dealer_mileage_segments == car_mileage_segment]
+                if not mileage_segment_listings.empty:
+                    # Full score if dealer has listings in this mileage segment
+                    olx_score += 2
 
         score_breakdown['OLX Listings'] = olx_score
         total_score += olx_score
@@ -1076,7 +1389,8 @@ if check_password():
         return total_score, score_breakdown
 
 
-    def get_top_dealers_for_inventory_car(car, historical_df, recent_views_df, recent_filters_df, olx_df, top_n=10):
+    def get_top_dealers_for_inventory_car(car, historical_df, recent_views_df, recent_filters_df, dealer_requests_df,
+                                          olx_df, top_n=10):
         """Get top matching dealers for a specific inventory car"""
 
         # Get all unique dealers
@@ -1087,6 +1401,8 @@ if check_password():
             all_dealers.update(recent_views_df['dealer_code'].unique())
         if not recent_filters_df.empty:
             all_dealers.update(recent_filters_df['dealer_code'].unique())
+        if not dealer_requests_df.empty:
+            all_dealers.update(dealer_requests_df['dealer_code'].unique())
         if not olx_df.empty:
             all_dealers.update(olx_df['dealer_code'].unique())
 
@@ -1097,7 +1413,7 @@ if check_password():
                 continue
 
             score, breakdown = calculate_inventory_match_score(
-                car, dealer_code, historical_df, recent_views_df, recent_filters_df, olx_df
+                car, dealer_code, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df
             )
 
             # Get dealer name
@@ -1118,6 +1434,167 @@ if check_password():
         # Sort by score and return top N
         dealer_scores = sorted(dealer_scores, key=lambda x: x['match_score'], reverse=True)
         return dealer_scores[:top_n]
+
+
+    def generate_comprehensive_dealer_matches(pipeline_df, inventory_df, historical_df, recent_views_df,
+                                              recent_filters_df, dealer_requests_df, olx_df):
+        """Generate comprehensive matches for all dealers with pipeline and inventory cars"""
+
+        # Get all unique dealers
+        all_dealers = set()
+        if not historical_df.empty:
+            all_dealers.update(historical_df['dealer_code'].unique())
+        if not recent_views_df.empty:
+            all_dealers.update(recent_views_df['dealer_code'].unique())
+        if not recent_filters_df.empty:
+            all_dealers.update(recent_filters_df['dealer_code'].unique())
+        if not dealer_requests_df.empty:
+            all_dealers.update(dealer_requests_df['dealer_code'].unique())
+        if not olx_df.empty:
+            all_dealers.update(olx_df['dealer_code'].unique())
+
+        # Remove any null values
+        all_dealers = {dealer for dealer in all_dealers if pd.notna(dealer)}
+
+        comprehensive_matches = []
+
+        # Process each dealer
+        for dealer_code in all_dealers:
+            # Get dealer name
+            dealer_name = "Unknown"
+            if not historical_df.empty:
+                dealer_info = historical_df[historical_df['dealer_code'] == dealer_code]
+                if not dealer_info.empty:
+                    dealer_name = dealer_info['dealer_name'].iloc[0]
+
+            # Find top pipeline matches for this dealer
+            pipeline_matches = []
+            if not pipeline_df.empty:
+                for _, car in pipeline_df.head(50).iterrows():  # Limit to top 50 pipeline cars for performance
+                    # Check if essential car data is valid
+                    if (pd.notna(car['car_make']) and pd.notna(car['car_model']) and
+                            pd.notna(car['car_year']) and pd.notna(car['car_kilometrage']) and
+                            pd.notna(car['sylndr_offer_price'])):
+
+                        car_for_matching = {
+                            'car_make': car['car_make'],
+                            'car_model': car['car_model'],
+                            'car_year': car['car_year'],
+                            'car_kilometrage': car['car_kilometrage'],
+                            'sylndr_offer_price': car['sylndr_offer_price']
+                        }
+
+                        score, breakdown = calculate_dealer_match_score(
+                            car_for_matching, dealer_code, historical_df, recent_views_df, recent_filters_df,
+                            dealer_requests_df, olx_df
+                        )
+
+                        if score >= 20:  # Only include meaningful matches
+                            pipeline_matches.append({
+                                'car_id': car['opportunity_code'],
+                                'car_name': car['opportunity_name'],
+                                'make_model': f"{car['car_make']} {car['car_model']}",
+                                'year': car['car_year'],
+                                'km': car['car_kilometrage'],
+                                'price': car['sylndr_offer_price'],
+                                'score': score,
+                                'type': 'Pipeline'
+                            })
+
+            # Find top inventory matches for this dealer
+            inventory_matches = []
+            if not inventory_df.empty:
+                for _, car in inventory_df.head(50).iterrows():  # Limit to top 50 inventory cars for performance
+                    # Check if essential car data is valid
+                    if (pd.notna(car['make']) and pd.notna(car['model']) and
+                            pd.notna(car['year']) and pd.notna(car['kilometers']) and
+                            pd.notna(car['sylndr_offer_price'])):
+
+                        score, breakdown = calculate_inventory_match_score(
+                            car, dealer_code, historical_df, recent_views_df, recent_filters_df, dealer_requests_df,
+                            olx_df
+                        )
+
+                        if score >= 20:  # Only include meaningful matches
+                            inventory_matches.append({
+                                'car_id': car['sf_vehicle_name'],
+                                'car_name': car['sf_vehicle_name'],
+                                'make_model': f"{car['make']} {car['model']}",
+                                'year': car['year'],
+                                'km': car['kilometers'],
+                                'price': car['sylndr_offer_price'],
+                                'score': score,
+                                'type': 'Inventory'
+                            })
+
+            # Sort matches by score
+            pipeline_matches = sorted(pipeline_matches, key=lambda x: x['score'], reverse=True)[:10]
+            inventory_matches = sorted(inventory_matches, key=lambda x: x['score'], reverse=True)[:10]
+
+            # Add to comprehensive matches if dealer has any matches
+            if pipeline_matches or inventory_matches:
+                comprehensive_matches.append({
+                    'dealer_code': dealer_code,
+                    'dealer_name': dealer_name,
+                    'pipeline_matches': pipeline_matches,
+                    'inventory_matches': inventory_matches,
+                    'total_pipeline_matches': len(pipeline_matches),
+                    'total_inventory_matches': len(inventory_matches),
+                    'best_pipeline_score': max([m['score'] for m in pipeline_matches]) if pipeline_matches else 0,
+                    'best_inventory_score': max([m['score'] for m in inventory_matches]) if inventory_matches else 0
+                })
+
+        # Sort dealers by best scores
+        comprehensive_matches = sorted(comprehensive_matches,
+                                       key=lambda x: max(x['best_pipeline_score'], x['best_inventory_score']),
+                                       reverse=True)
+
+        return comprehensive_matches
+
+
+    def create_export_dataframe(comprehensive_matches):
+        """Create a flattened dataframe suitable for export"""
+        export_data = []
+
+        for dealer_match in comprehensive_matches:
+            dealer_code = dealer_match['dealer_code']
+            dealer_name = dealer_match['dealer_name']
+
+            # Add pipeline matches
+            for match in dealer_match['pipeline_matches']:
+                export_data.append({
+                    'Dealer Code': dealer_code,
+                    'Dealer Name': dealer_name,
+                    'Car Type': 'Pipeline',
+                    'Car ID': match['car_id'],
+                    'Car Name': match['car_name'],
+                    'Make Model': match['make_model'],
+                    'Year': match['year'],
+                    'Kilometers': match['km'],
+                    'Price (EGP)': match['price'],
+                    'Match Score': round(match['score'], 1),
+                    'Match Level': '🟢 High' if match['score'] >= 60 else '🟡 Medium' if match[
+                                                                                           'score'] >= 40 else '🔴 Low'
+                })
+
+            # Add inventory matches
+            for match in dealer_match['inventory_matches']:
+                export_data.append({
+                    'Dealer Code': dealer_code,
+                    'Dealer Name': dealer_name,
+                    'Car Type': 'Inventory',
+                    'Car ID': match['car_id'],
+                    'Car Name': match['car_name'],
+                    'Make Model': match['make_model'],
+                    'Year': match['year'],
+                    'Kilometers': match['km'],
+                    'Price (EGP)': match['price'],
+                    'Match Score': round(match['score'], 1),
+                    'Match Level': '🟢 High' if match['score'] >= 60 else '🟡 Medium' if match[
+                                                                                           'score'] >= 40 else '🔴 Low'
+                })
+
+        return pd.DataFrame(export_data)
 
 
     def main():
@@ -1139,7 +1616,7 @@ if check_password():
 
         # Load data
         with st.spinner("Loading pipeline and dealer data..."):
-            pipeline_df, inventory_df, historical_df, recent_views_df, recent_filters_df, olx_df = load_pipeline_data()
+            pipeline_df, inventory_df, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df = load_pipeline_data()
 
         if pipeline_df.empty:
             st.warning("No pipeline data available.")
@@ -1161,7 +1638,7 @@ if check_password():
             st.metric("New This Week", recent_opportunities)
 
         # Main tabs
-        tab1, tab2 = st.tabs(["🎯 Car Matching", "📦 Inventory Matching"])
+        tab1, tab2, tab3 = st.tabs(["🎯 Car Matching", "📦 Inventory Matching", "📊 Export"])
 
         with tab1:
             st.subheader("Car to Dealer Matching")
@@ -1201,9 +1678,9 @@ if check_password():
                     st.write(f"• Created: {selected_car['opportunity_creation_datetime'].strftime('%Y-%m-%d')}")
                     st.write(f"• Inspection: {selected_car['inspection_current_status']}")
 
-                # Get matching dealers using the old function with renamed parameters
+                # Get matching dealers - fixed function call
                 with st.spinner("Finding matching dealers..."):
-                    # Create a car dict compatible with the original function
+                    # Create a car dict compatible with the function
                     car_for_matching = {
                         'car_make': selected_car['car_make'],
                         'car_model': selected_car['car_model'],
@@ -1213,7 +1690,8 @@ if check_password():
                     }
 
                     top_dealers = get_top_dealers_for_car(
-                        car_for_matching, historical_df, recent_views_df, recent_filters_df, olx_df, top_n=15
+                        car_for_matching, historical_df, recent_views_df, recent_filters_df, dealer_requests_df, olx_df,
+                        top_n=15
                     )
 
                 if top_dealers:
@@ -1238,11 +1716,11 @@ if check_password():
                     def highlight_score(val):
                         try:
                             score = float(val)
-                            if score >= 50:
+                            if score >= 60:
                                 return 'background-color: #90EE90'  # Light green
-                            elif score >= 30:
+                            elif score >= 40:
                                 return 'background-color: #FFE4B5'  # Light orange
-                            elif score >= 15:
+                            elif score >= 20:
                                 return 'background-color: #FFCCCB'  # Light red
                             else:
                                 return ''
@@ -1254,7 +1732,7 @@ if check_password():
                         use_container_width=True
                     )
 
-                    st.info("🟢 High Match (50+) | 🟡 Medium Match (30-49) | 🔴 Low Match (15-29)")
+                    st.info("🟢 High Match (60+) | 🟡 Medium Match (40-59) | 🔴 Low Match (20-39)")
 
                     # Show car group analysis
                     car_group = get_car_group(selected_car['car_make'])
@@ -1369,7 +1847,8 @@ if check_password():
                         # Get matching dealers for this inventory car
                         with st.spinner("Finding interested dealers..."):
                             top_dealers = get_top_dealers_for_inventory_car(
-                                selected_car, historical_df, recent_views_df, recent_filters_df, olx_df, top_n=15
+                                selected_car, historical_df, recent_views_df, recent_filters_df, dealer_requests_df,
+                                olx_df, top_n=15
                             )
 
                         if top_dealers:
@@ -1394,11 +1873,11 @@ if check_password():
                             def highlight_score(val):
                                 try:
                                     score = float(val)
-                                    if score >= 50:
+                                    if score >= 60:
                                         return 'background-color: #90EE90'  # Light green
-                                    elif score >= 30:
+                                    elif score >= 40:
                                         return 'background-color: #FFE4B5'  # Light orange
-                                    elif score >= 15:
+                                    elif score >= 20:
                                         return 'background-color: #FFCCCB'  # Light red
                                     else:
                                         return ''
@@ -1410,7 +1889,7 @@ if check_password():
                                 use_container_width=True
                             )
 
-                            st.info("🟢 High Interest (50+) | 🟡 Medium Interest (30-49) | 🔴 Low Interest (15-29)")
+                            st.info("🟢 High Interest (60+) | 🟡 Medium Interest (40-59) | 🔴 Low Interest (20-39)")
 
                             # Show top 3 dealers analysis
                             st.subheader("📋 Top 3 Most Interested Dealers")
@@ -1479,6 +1958,171 @@ if check_password():
                 else:
                     st.info("No cars available in inventory.")
 
+        with tab3:
+            st.subheader("📊 Comprehensive Dealer-Car Export")
+
+            # Track tab view
+            if "current_user" in st.session_state:
+                posthog.capture(
+                    st.session_state["current_user"],
+                    'tab_view',
+                    {
+                        'tab': 'export',
+                        'timestamp': datetime.now().isoformat()
+                    }
+                )
+
+            st.info("🔄 Generating comprehensive matches for all dealers... This may take a moment.")
+
+            # Generate comprehensive matches
+            with st.spinner("Analyzing all dealer-car matches..."):
+                comprehensive_matches = generate_comprehensive_dealer_matches(
+                    pipeline_df, inventory_df, historical_df, recent_views_df, recent_filters_df, dealer_requests_df,
+                    olx_df
+                )
+
+            if comprehensive_matches:
+                # Display summary metrics
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    total_dealers = len(comprehensive_matches)
+                    st.metric("Dealers with Matches", total_dealers)
+
+                with col2:
+                    total_pipeline_matches = sum([d['total_pipeline_matches'] for d in comprehensive_matches])
+                    st.metric("Total Pipeline Matches", total_pipeline_matches)
+
+                with col3:
+                    total_inventory_matches = sum([d['total_inventory_matches'] for d in comprehensive_matches])
+                    st.metric("Total Inventory Matches", total_inventory_matches)
+
+                with col4:
+                    avg_score = sum([max(d['best_pipeline_score'], d['best_inventory_score']) for d in
+                                     comprehensive_matches]) / len(comprehensive_matches)
+                    st.metric("Avg Best Score", f"{avg_score:.1f}")
+
+                # Create export dataframe
+                export_df = create_export_dataframe(comprehensive_matches)
+
+                # Export functionality
+                st.subheader("📥 Export Options")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # Download as CSV
+                    csv_data = export_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download as CSV",
+                        data=csv_data,
+                        file_name=f"dealer_car_matches_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv"
+                    )
+
+                with col2:
+                    # Filter options
+                    min_score = st.slider("Minimum Match Score", 0, 100, 20, 5)
+                    filtered_export_df = export_df[export_df['Match Score'] >= min_score]
+
+                # Display filtered results
+                st.subheader("🎯 Dealer-Car Matches Overview")
+
+                # Summary by dealer
+                st.write("**Top Dealers by Match Quality:**")
+                dealer_summary = []
+                for dealer_match in comprehensive_matches[:20]:  # Show top 20 dealers
+                    dealer_summary.append({
+                        'Dealer Code': dealer_match['dealer_code'],
+                        'Dealer Name': dealer_match['dealer_name'],
+                        'Pipeline Matches': dealer_match['total_pipeline_matches'],
+                        'Inventory Matches': dealer_match['total_inventory_matches'],
+                        'Best Pipeline Score': f"{dealer_match['best_pipeline_score']:.1f}",
+                        'Best Inventory Score': f"{dealer_match['best_inventory_score']:.1f}",
+                        'Overall Best': f"{max(dealer_match['best_pipeline_score'], dealer_match['best_inventory_score']):.1f}"
+                    })
+
+                dealer_summary_df = pd.DataFrame(dealer_summary)
+                st.dataframe(dealer_summary_df, use_container_width=True)
+
+                # Detailed matches view
+                st.subheader("🔍 Detailed Matches")
+
+                # Filter by dealer
+                selected_dealer_export = st.selectbox(
+                    "Select dealer to view detailed matches:",
+                    options=["All Dealers"] + [d['dealer_name'] for d in comprehensive_matches],
+                    key="export_dealer_select"
+                )
+
+                if selected_dealer_export == "All Dealers":
+                    display_df = filtered_export_df
+                else:
+                    display_df = filtered_export_df[filtered_export_df['Dealer Name'] == selected_dealer_export]
+
+                # Add color coding function
+                def highlight_match_level(row):
+                    if row['Match Level'] == '🟢 High':
+                        return ['background-color: #90EE90'] * len(row)
+                    elif row['Match Level'] == '🟡 Medium':
+                        return ['background-color: #FFE4B5'] * len(row)
+                    elif row['Match Level'] == '🔴 Low':
+                        return ['background-color: #FFCCCB'] * len(row)
+                    else:
+                        return [''] * len(row)
+
+                if not display_df.empty:
+                    st.dataframe(
+                        display_df.style.apply(highlight_match_level, axis=1),
+                        column_config={
+                            "Kilometers": st.column_config.NumberColumn(
+                                "Kilometers",
+                                format="%d km"
+                            ),
+                            "Price (EGP)": st.column_config.NumberColumn(
+                                "Price (EGP)",
+                                format="EGP %d"
+                            )
+                        },
+                        use_container_width=True
+                    )
+
+                    st.info(f"Showing {len(display_df)} matches | 🟢 High: 60+ | 🟡 Medium: 40-59 | 🔴 Low: 20-39")
+                else:
+                    st.warning("No matches found with the current filters.")
+
+                # Individual dealer details
+                if selected_dealer_export != "All Dealers":
+                    selected_dealer_data = next(
+                        (d for d in comprehensive_matches if d['dealer_name'] == selected_dealer_export), None)
+
+                    if selected_dealer_data:
+                        st.subheader(f"📋 {selected_dealer_export} - Detailed Breakdown")
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            st.write("**🎯 Top Pipeline Matches:**")
+                            if selected_dealer_data['pipeline_matches']:
+                                for i, match in enumerate(selected_dealer_data['pipeline_matches'][:5], 1):
+                                    score_color = "🟢" if match['score'] >= 60 else "🟡" if match['score'] >= 40 else "🔴"
+                                    st.write(
+                                        f"{i}. {score_color} {match['make_model']} ({match['year']}) - Score: {match['score']:.1f}")
+                            else:
+                                st.write("No pipeline matches")
+
+                        with col2:
+                            st.write("**📦 Top Inventory Matches:**")
+                            if selected_dealer_data['inventory_matches']:
+                                for i, match in enumerate(selected_dealer_data['inventory_matches'][:5], 1):
+                                    score_color = "🟢" if match['score'] >= 60 else "🟡" if match['score'] >= 40 else "🔴"
+                                    st.write(
+                                        f"{i}. {score_color} {match['make_model']} ({match['year']}) - Score: {match['score']:.1f}")
+                            else:
+                                st.write("No inventory matches")
+            else:
+                st.warning("No dealer matches found. This could be due to limited data or high scoring thresholds.")
+
 
     if __name__ == "__main__":
-        main() 
+        main()
